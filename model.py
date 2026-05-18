@@ -11,9 +11,9 @@ class SelfAttention(nn.Module):
         super().__init__()
         self.attn = nn.Linear(hidden_size, 1)
 
-    def forward(self, x):           # x: (batch, seq, hidden)
-        weights = torch.softmax(self.attn(x), dim=1)   # (batch, seq, 1)
-        return (weights * x).sum(dim=1)                # (batch, hidden)
+    def forward(self, x):          
+        weights = torch.softmax(self.attn(x), dim=1)   
+        return (weights * x).sum(dim=1)              
 
 
 class RNN_SGRU(nn.Module):
@@ -48,8 +48,8 @@ class RNN_SGRU(nn.Module):
 
     def forward(self, x):
         if x.dim() == 2:
-            x = x.unsqueeze(1)          # (batch, 1, features)
-        gru_out, _ = self.gru(x)        # (batch, 1, hidden)
-        context    = self.attention(gru_out)   # (batch, hidden)
+            x = x.unsqueeze(1)          
+        gru_out, _ = self.gru(x)        
+        context    = self.attention(gru_out)   
         context    = self.dropout(context)
-        return self.classifier(context) # (batch, 1) — raw logit
+        return self.classifier(context) 

@@ -36,7 +36,7 @@ from sklearn.metrics import (
 from model import RNN_SGRU
 from preprocess import build_features
 
-# ── defaults ──────────────────────────────────────────────────────────────
+
 DEFAULTS = dict(
     dataset      = "realistic_fraud_dataset.csv",
     model_out    = "fraud_rnn_sgru_model.pth",
@@ -48,7 +48,7 @@ DEFAULTS = dict(
     hidden_size  = 128,
     num_layers   = 2,
     dropout      = 0.3,
-    sample       = 0,          # 0 = use full dataset
+    sample       = 0,          
     seed         = 42,
 )
 
@@ -61,7 +61,7 @@ def main(cfg):
     print(f"  FraudSentinel — Training")
     print(f"{'='*60}")
 
-    # ── load data ─────────────────────────────────────────────────────────
+
     if not os.path.exists(cfg.dataset):
         raise FileNotFoundError(
             f"\nDataset not found: '{cfg.dataset}'\n"
@@ -80,13 +80,13 @@ def main(cfg):
     y = df["Class"].values
     df_features = df.drop(columns=["Class"], errors="ignore")
 
-    # ── feature engineering + PCA ─────────────────────────────────────────
+   
     print("\n[ Feature engineering ]")
     X_pca, preprocessor = build_features(df_features, fit=True)
     n_features = X_pca.shape[1]
     print(f"  Feature shape: {X_pca.shape}")
 
-    # ── train / val / test split ──────────────────────────────────────────
+    
     X_tr, X_tmp, y_tr, y_tmp = train_test_split(
         X_pca, y, test_size=0.30, stratify=y, random_state=cfg.seed)
     X_val, X_te, y_val, y_te = train_test_split(
@@ -111,7 +111,7 @@ def main(cfg):
         drop_last=False,
     )
 
-    # ── model ─────────────────────────────────────────────────────────────
+    
     model = RNN_SGRU(
         input_size=n_features,
         hidden_size=cfg.hidden_size,
@@ -119,7 +119,7 @@ def main(cfg):
         dropout=cfg.dropout,
     )
 
-    # pos_weight = #negative / #positive  (handles class imbalance)
+
     pos_weight = torch.tensor(
         [(y == 0).sum() / max((y == 1).sum(), 1)],
         dtype=torch.float32,
@@ -132,7 +132,7 @@ def main(cfg):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="max", patience=3, factor=0.5, verbose=False)
 
-    # ── training loop ─────────────────────────────────────────────────────
+
     best_auc      = 0.0
     best_weights  = None
     patience_ctr  = 0
@@ -145,7 +145,7 @@ def main(cfg):
 
     for ep in range(1, cfg.epochs + 1):
 
-        # train
+       
         model.train()
         train_loss = 0.0
         for xb, yb in train_loader:
@@ -157,7 +157,7 @@ def main(cfg):
             train_loss += loss.item() * len(xb)
         train_loss /= len(Xt)
 
-        # validate
+      
         model.eval()
         with torch.no_grad():
             val_logits = model(Xv)
@@ -185,7 +185,6 @@ def main(cfg):
                 print(f"\n  Early stop at epoch {ep}  (best AUC = {best_auc:.4f})")
                 break
 
-    # ── test evaluation ───────────────────────────────────────────────────
     model.load_state_dict(best_weights)
     model.eval()
     with torch.no_grad():
@@ -200,7 +199,7 @@ def main(cfg):
         y_te, te_preds, target_names=["Normal", "Fraud"]))
     print(f"  AUC-ROC : {roc_auc_score(y_te, te_probs):.4f}")
 
-    # ── save ──────────────────────────────────────────────────────────────
+    
     preprocessor["n_features"] = n_features
     preprocessor["model_cfg"]  = {
         "input_size":  n_features,
