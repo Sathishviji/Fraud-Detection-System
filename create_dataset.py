@@ -51,7 +51,6 @@ STATUS_MAP = {
     "":          "Unknown",
 }
 
-# All known full product names (for truncation repair)
 PRODUCTS = [
     "Coffee Machine",
     "Headphones",
@@ -61,7 +60,6 @@ PRODUCTS = [
 ]
 
 
-# ── helpers ───────────────────────────────────────────────────────────────
 
 def normalise_payment(v) -> str:
     key = str(v).strip().lower()
@@ -77,7 +75,7 @@ def repair_product(v) -> str:
     s = str(v).strip()
     sl = s.lower()
     for p in PRODUCTS:
-        # match if input is a prefix of the canonical name
+     
         if p.lower().startswith(sl):
             return p
     return s
@@ -112,7 +110,6 @@ def is_bad_date(s) -> int:
         return 1
 
 
-# ── main ──────────────────────────────────────────────────────────────────
 
 def build_dataset(input_path: str, output_path: str) -> pd.DataFrame:
     print(f"\n{'='*55}")
@@ -124,7 +121,6 @@ def build_dataset(input_path: str, output_path: str) -> pd.DataFrame:
     print(f"  Rows   : {len(df):,}")
     print(f"  Cols   : {df.columns.tolist()}")
 
-    # ── 1. clean price & quantity ─────────────────────────────────────────
     raw_price = df["Price"].apply(clean_price)
     raw_qty   = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0)
 
@@ -134,28 +130,23 @@ def build_dataset(input_path: str, output_path: str) -> pd.DataFrame:
     df["Quantity"]      = raw_qty.abs()
     df["Amount"]        = df["Price"] * df["Quantity"]
 
-    # ── 2. normalise categoricals ─────────────────────────────────────────
     df["Payment_Method"]     = df["Payment_Method"].apply(normalise_payment)
     df["Transaction_Status"] = df["Transaction_Status"].apply(normalise_status)
     df["Product_Name"]       = df["Product_Name"].apply(repair_product)
 
-    # ── 3. date flag ──────────────────────────────────────────────────────
     df["BadDate"] = df["Transaction_Date"].apply(is_bad_date)
 
-    # ── 4. fill missing Transaction_IDs ──────────────────────────────────
     missing = df["Transaction_ID"].isna() | (df["Transaction_ID"].astype(str).str.strip() == "")
     n_miss  = missing.sum()
     if n_miss > 0:
         df.loc[missing, "Transaction_ID"] = [f"GEN{i:06d}" for i in range(n_miss)]
         print(f"  Filled {n_miss} missing Transaction_IDs")
 
-    # ── 5. compute thresholds ─────────────────────────────────────────────
     p90_price = df["Price"].quantile(0.90)
     p90_qty   = df["Quantity"].quantile(0.90)
     print(f"\n  P90 price    : {p90_price:.2f}")
     print(f"  P90 quantity : {p90_qty:.2f}")
 
-    # ── 6. label fraud ────────────────────────────────────────────────────
     df["Class"] = 0
     df.loc[df["Price"]    > p90_price,                           "Class"] = 1
     df.loc[df["Quantity"] > p90_qty,                             "Class"] = 1
@@ -165,7 +156,6 @@ def build_dataset(input_path: str, output_path: str) -> pd.DataFrame:
     df.loc[df["NegativePrice"] == 1,                             "Class"] = 1
     df.loc[df["NegativeQty"]   == 1,                             "Class"] = 1
 
-    # ── 7. shuffle ────────────────────────────────────────────────────────
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     print(f"\n  Class distribution:")

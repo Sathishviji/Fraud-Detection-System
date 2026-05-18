@@ -10,7 +10,6 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-# ── column list (must stay fixed after training) ──────────────────────────
 FEATURE_COLS = [
     "Price", "Quantity", "Amount",
     "LogPrice", "LogQty", "LogAmount",
@@ -21,9 +20,8 @@ FEATURE_COLS = [
     "BadDate", "TruncName",
 ]
 
-N_PCA = 12   # PCA components to keep
+N_PCA = 12   
 
-# ── risk maps ─────────────────────────────────────────────────────────────
 _PM_RISK = {
     "cash": 0,
     "paypal": 1, "pay pal": 1,
@@ -46,8 +44,6 @@ _PRODUCTS = [
     "Coffee Machine", "Headphones", "Smartphone", "Laptop", "Tablet",
 ]
 
-
-# ── helpers ───────────────────────────────────────────────────────────────
 
 def _to_float(v) -> float:
     """Strip currency symbols and parse to float."""
@@ -100,13 +96,13 @@ def _parse_year_month(s: str):
         parts = str(s).strip().split("-")
         y = int(parts[0]) if len(parts) >= 1 else 2020
         m = int(parts[1]) if len(parts) >= 2 else 1
-        m = max(1, min(12, m))   # clamp invalid months for encoding
+        m = max(1, min(12, m))   
         return y, m
     except Exception:
         return 2020, 1
 
 
-# ── main pipeline ─────────────────────────────────────────────────────────
+
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -116,7 +112,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
-    # raw numeric
+    
     raw_price = df["Price"].apply(_to_float) if "Price" in df.columns else pd.Series(np.zeros(len(df)))
     raw_qty   = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0) if "Quantity" in df.columns else pd.Series(np.zeros(len(df)))
 
@@ -127,16 +123,16 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     qty   = raw_qty.abs()
     amt   = price * qty
 
-    # derived
+    
     safe_qty      = qty.replace(0, np.nan)
     price_per_unit = (price / safe_qty).fillna(0)
 
-    # log transforms
+   
     log_price  = np.log1p(price)
     log_qty    = np.log1p(qty)
     log_amount = np.log1p(amt)
 
-    # date features
+  
     date_col = df["Transaction_Date"] if "Transaction_Date" in df.columns else pd.Series(["2020-01-01"] * len(df))
     bad_date = date_col.apply(_bad_date)
     ym       = date_col.apply(_parse_year_month)
@@ -145,7 +141,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     month_sin = np.sin(2 * np.pi * months / 12)
     month_cos = np.cos(2 * np.pi * months / 12)
 
-    # categorical risk
+  
     pm_col     = df["Payment_Method"] if "Payment_Method" in df.columns else pd.Series([""] * len(df))
     status_col = df["Transaction_Status"] if "Transaction_Status" in df.columns else pd.Series([""] * len(df))
     prod_col   = df["Product_Name"] if "Product_Name" in df.columns else pd.Series(["x"] * len(df))
@@ -206,7 +202,7 @@ def build_features(df: pd.DataFrame, fit: bool = True, preprocessor: dict = None
             "n_components": n,
         }
     else:
-        # Use EXACTLY the same scaler and PCA fitted during training
+        
         X_sc  = preprocessor["scaler"].transform(X)
         X_pca = preprocessor["pca"].transform(X_sc)
 

@@ -36,13 +36,11 @@ from sklearn.metrics import (
 from model import RNN_SGRU
 from preprocess import build_features
 
-# ── file paths ────────────────────────────────────────────────────────────
 MODEL_FILE = "fraud_rnn_sgru_model.pth"
 PREP_FILE  = "preprocessor.pkl"
 EVAL_CSV   = "realistic_fraud_dataset.csv"
 
 
-# ── load model at startup ─────────────────────────────────────────────────
 def _load_model():
     for p in (MODEL_FILE, PREP_FILE):
         if not os.path.exists(p):
@@ -70,7 +68,6 @@ def _load_model():
 
 model, preprocessor = _load_model()
 
-# ── FastAPI app ───────────────────────────────────────────────────────────
 app = FastAPI(title="FraudSentinel", version="2.0")
 app.add_middleware(
     CORSMiddleware,
@@ -79,11 +76,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# in-memory cache for /export
 _last_results: list = []
 
 
-# ── helpers ───────────────────────────────────────────────────────────────
 def _preprocess(df: pd.DataFrame) -> np.ndarray:
     """Transform raw dataframe using the SAVED preprocessor (never re-fit)."""
     X_pca, _ = build_features(df, fit=False, preprocessor=preprocessor)
@@ -97,7 +92,6 @@ def _predict(X: np.ndarray, threshold: float = 0.5):
         logits = model(tensor)
         probs  = torch.sigmoid(logits).squeeze().numpy()
 
-    # handle single-row edge case
     if probs.ndim == 0:
         probs = np.array([float(probs)])
 
@@ -105,7 +99,6 @@ def _predict(X: np.ndarray, threshold: float = 0.5):
     return probs.tolist(), labels
 
 
-# ── routes ────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
@@ -174,7 +167,6 @@ async def upload(
     global _last_results
     _last_results = results
 
-    # summary
     fraud  = sum(1 for r in results if r["prediction"] == "Fraud")
     normal = len(results) - fraud
     summary = {
